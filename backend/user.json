@@ -1,0 +1,21 @@
+[
+  {
+    "id": "204cdf9f-cef4-4916-9c11-875e03730427",
+    "username": "test_admin",
+    "email": "admin@secureai.local",
+    "emailVerified": true,
+    "createdTimestamp": 1775076253111,
+    "enabled": true,
+    "totp": false,
+    "disableableCredentialTypes": [],
+    "requiredActions": [],
+    "notBefore": 0,
+    "access": {
+      "manageGroupMembership": true,
+      "view": true,
+      "mapRoles": true,
+      "impersonate": true,
+      "manage": true
+    }
+  }
+]

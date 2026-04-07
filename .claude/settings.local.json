@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(export DOCKER_TLS_VERIFY=1)",
+      "Bash(export DOCKER_HOST=tcp://127.0.0.1:63306)",
+      "Bash(export DOCKER_CERT_PATH=/mnt/c/Users/Dell/.minikube/certs)",
+      "Bash(export MINIKUBE_ACTIVE_DOCKERD=minikube)",
+      "Bash(docker build:*)"
+    ]
+  }
+}
