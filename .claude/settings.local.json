@@ -5,7 +5,11 @@
       "Bash(export DOCKER_HOST=tcp://127.0.0.1:63306)",
       "Bash(export DOCKER_CERT_PATH=/mnt/c/Users/Dell/.minikube/certs)",
       "Bash(export MINIKUBE_ACTIVE_DOCKERD=minikube)",
-      "Bash(docker build:*)"
+      "Bash(docker build:*)",
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl rollout:*)",
+      "Bash(kubectl exec:*)"
     ]
   }
 }

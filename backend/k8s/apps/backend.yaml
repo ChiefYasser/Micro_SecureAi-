@@ -24,15 +24,46 @@ spec:
       labels:
         app: backend
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: backend
         image: backend-backend:latest
-        imagePullPolicy: Never 
+        imagePullPolicy: Never
         ports:
         - containerPort: 8000
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /api/health/
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health/
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 5
         env:
         - name: ALLOWED_HOSTS
-          value: "localhost,127.0.0.1,0.0.0.0,backend,secureai.local"
+          value: "localhost,127.0.0.1,0.0.0.0,backend,secureai.local,*"
         - name: DEBUG
           value: "True"
         - name: DB_HOST

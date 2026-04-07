@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: promtail
+automountServiceAccountToken: false
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -70,13 +71,43 @@ spec:
         app: promtail
     spec:
       serviceAccountName: promtail
+      automountServiceAccountToken: true
+      securityContext:
+        runAsUser: 0
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: promtail
-        image: grafana/promtail:latest
+        image: grafana/promtail:3.5.0
         args:
           - "-config.file=/etc/promtail/promtail.yaml"
         ports:
         - containerPort: 9080
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+            add:
+              - DAC_READ_SEARCH
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        livenessProbe:
+          tcpSocket:
+            port: 9080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 9080
+          initialDelaySeconds: 10
+          periodSeconds: 5
         volumeMounts:
         - name: promtail-config
           mountPath: /etc/promtail
@@ -86,6 +117,8 @@ spec:
         - name: containers
           mountPath: /var/lib/docker/containers
           readOnly: true
+        - name: tmp
+          mountPath: /tmp
       volumes:
       - name: promtail-config
         configMap:
@@ -96,3 +129,5 @@ spec:
       - name: containers
         hostPath:
           path: /var/lib/docker/containers
+      - name: tmp
+        emptyDir: {}

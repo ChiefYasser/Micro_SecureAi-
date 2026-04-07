@@ -13,12 +13,30 @@ spec:
       labels:
         app: redis
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: redis
         image: redis:7-alpine
         ports:
         - containerPort: 6379
-        # Health check to make sure Redis is actually ready
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
         livenessProbe:
           exec:
             command:
@@ -26,6 +44,13 @@ spec:
             - ping
           initialDelaySeconds: 5
           periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 3
+          periodSeconds: 5
 ---
 # --- PART 2: THE SERVICE (The Internal URL) ---
 apiVersion: v1

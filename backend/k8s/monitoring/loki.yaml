@@ -55,13 +55,32 @@ spec:
       labels:
         app: loki
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: loki
-        image: grafana/loki:latest
+        image: grafana/loki:3.5.0
         args:
           - "-config.file=/etc/loki/loki.yaml"
         ports:
         - containerPort: 3100
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
         volumeMounts:
         - name: loki-config
           mountPath: /etc/loki

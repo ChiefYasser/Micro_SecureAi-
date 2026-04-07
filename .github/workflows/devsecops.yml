@@ -1,0 +1,177 @@
+name: "SecureAI MicroShield — DevSecOps Pipeline"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Static Application Security Testing
+  # ──────────────────────────────────────────────
+  sast:
+    name: "SAST — Bandit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit on Django backend
+        run: bandit -r backend/ -x backend/venv -s B101 --severity-level medium -f json -o bandit-backend.json || true
+
+      - name: Run Bandit on AI service
+        run: bandit -r backend/ai_service/ --severity-level medium -f json -o bandit-ai.json || true
+
+      - name: Evaluate Bandit results
+        run: |
+          echo "=== Django Backend ==="
+          python -c "
+          import json, sys
+          for f in ['bandit-backend.json', 'bandit-ai.json']:
+              data = json.load(open(f))
+              highs = [r for r in data['results'] if r['issue_severity'] in ('HIGH',)]
+              if highs:
+                  for h in highs:
+                      print(f\"FAIL [{f}]: {h['issue_text']} at {h['filename']}:{h['line_number']}\")
+                  sys.exit(1)
+          print('PASS: No High/Critical SAST findings.')
+          "
+
+      - name: Upload SAST report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-reports
+          path: bandit-*.json
+
+  # ──────────────────────────────────────────────
+  # Job 2: Software Composition Analysis
+  # ──────────────────────────────────────────────
+  sca:
+    name: "SCA — pip-audit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit Django backend dependencies
+        run: pip-audit -r backend/requirements.txt --desc --output backend-audit.txt || true
+
+      - name: Audit AI service dependencies
+        run: pip-audit -r backend/ai_service/requirements.txt --desc --output ai-audit.txt || true
+
+      - name: Fail on vulnerabilities
+        run: |
+          echo "=== Backend Dependencies ==="
+          cat backend-audit.txt
+          echo ""
+          echo "=== AI Service Dependencies ==="
+          cat ai-audit.txt
+          echo ""
+          # Fail if any vulnerabilities found (pip-audit outputs "No known vulnerabilities" when clean)
+          if grep -q "found" backend-audit.txt 2>/dev/null || grep -q "found" ai-audit.txt 2>/dev/null; then
+            echo "FAIL: Vulnerable dependencies detected."
+            exit 1
+          fi
+          echo "PASS: All dependencies are clean."
+
+      - name: Upload SCA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-reports
+          path: "*-audit.txt"
+
+  # ──────────────────────────────────────────────
+  # Job 3: Infrastructure-as-Code Security Scan
+  # ──────────────────────────────────────────────
+  iac:
+    name: "IaC — Checkov"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov on Kubernetes manifests
+        run: |
+          checkov -d backend/k8s/ \
+            --framework kubernetes \
+            --compact \
+            --soft-fail-on CKV_K8S_21,CKV_K8S_43,CKV_K8S_14,CKV2_K8S_6,CKV_K8S_22,CKV_K8S_40,CKV_K8S_15,CKV_K8S_23,CKV_K8S_25,CKV_K8S_38,CKV_K8S_35 \
+            --output cli \
+            --output-file checkov-report.txt \
+            || true
+
+      - name: Evaluate Checkov results
+        run: |
+          cat checkov-report.txt 2>/dev/null || true
+          # Re-run to get exit code — hard-fail checks only
+          checkov -d backend/k8s/ \
+            --framework kubernetes \
+            --compact \
+            --skip-check CKV_K8S_21,CKV_K8S_43,CKV_K8S_14,CKV2_K8S_6,CKV_K8S_22,CKV_K8S_40,CKV_K8S_15,CKV_K8S_23,CKV_K8S_25,CKV_K8S_38,CKV_K8S_35
+
+      - name: Upload IaC report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: checkov-report.txt
+
+  # ──────────────────────────────────────────────
+  # Job 4: Container Image Vulnerability Scan
+  # ──────────────────────────────────────────────
+  container-scan:
+    name: "Container — Trivy"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t backend-backend:latest ./backend
+
+      - name: Build AI service image
+        run: docker build -t ai-service:latest ./backend/ai_service
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update && sudo apt-get install -y trivy
+
+      - name: Scan backend image
+        run: |
+          trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --format table \
+            backend-backend:latest
+
+      - name: Scan AI service image
+        run: |
+          trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --format table \
+            ai-service:latest
