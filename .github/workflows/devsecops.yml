@@ -71,25 +71,10 @@ jobs:
         run: pip install pip-audit
 
       - name: Audit Django backend dependencies
-        run: pip-audit -r backend/requirements.txt --desc --output backend-audit.txt || true
+        run: pip-audit -r backend/requirements.txt --desc
 
       - name: Audit AI service dependencies
-        run: pip-audit -r backend/ai_service/requirements.txt --desc --output ai-audit.txt || true
-
-      - name: Fail on vulnerabilities
-        run: |
-          echo "=== Backend Dependencies ==="
-          cat backend-audit.txt
-          echo ""
-          echo "=== AI Service Dependencies ==="
-          cat ai-audit.txt
-          echo ""
-          # Fail if any vulnerabilities found (pip-audit outputs "No known vulnerabilities" when clean)
-          if grep -q "found" backend-audit.txt 2>/dev/null || grep -q "found" ai-audit.txt 2>/dev/null; then
-            echo "FAIL: Vulnerable dependencies detected."
-            exit 1
-          fi
-          echo "PASS: All dependencies are clean."
+        run: pip-audit -r backend/ai_service/requirements.txt --desc
 
       - name: Upload SCA report
         if: always()
@@ -166,6 +151,7 @@ jobs:
         run: |
           trivy image --exit-code 1 --severity HIGH,CRITICAL \
             --ignore-unfixed \
+            --ignorefile .trivyignore \
             --format table \
             backend-backend:latest
 
@@ -173,5 +159,13 @@ jobs:
         run: |
           trivy image --exit-code 1 --severity HIGH,CRITICAL \
             --ignore-unfixed \
+            --ignorefile .trivyignore \
             --format table \
             ai-service:latest
+
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: "*.json"

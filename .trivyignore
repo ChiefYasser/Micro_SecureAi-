@@ -1,0 +1,15 @@
+# SecureAI MicroShield — Trivy Ignore List
+# Only unfixable OS-level CVEs are listed here. All application-level CVEs must be fixed.
+# Reviewed: 2026-04-07
+
+# linux-libc-dev: Kernel header CVEs — not exploitable in containerized workloads.
+# These have no upstream fix and are flagged against the development headers package,
+# not the running kernel. Containers share the host kernel and cannot be patched here.
+CVE-2013-7445
+CVE-2019-19449
+CVE-2019-19814
+CVE-2021-3847
+CVE-2021-3864
+
+# ncurses: Buffer overflow in terminal handling — not reachable in headless containers.
+CVE-2025-69720

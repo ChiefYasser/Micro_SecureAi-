@@ -9,7 +9,8 @@
       "Bash(kubectl apply:*)",
       "Bash(kubectl get:*)",
       "Bash(kubectl rollout:*)",
-      "Bash(kubectl exec:*)"
+      "Bash(kubectl exec:*)",
+      "Bash(docker run:*)"
     ]
   }
 }
