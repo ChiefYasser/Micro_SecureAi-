@@ -1,0 +1,348 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  labels:
+    app: grafana
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'soc-dashboards'
+        orgId: 1
+        folder: 'SecureAI'
+        type: file
+        disableDeletion: false
+        editable: true
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-soc-dashboard
+  labels:
+    app: grafana
+    grafana_dashboard: "1"
+data:
+  secureai-soc.json: |
+    {
+      "annotations": { "list": [] },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "id": 1,
+          "title": "Total HTTP Requests",
+          "type": "gauge",
+          "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "#ACAD94", "value": null },
+                  { "color": "#ACAD94", "value": 500 },
+                  { "color": "#F59E0B", "value": 5000 },
+                  { "color": "#EF4444", "value": 10000 }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "orientation": "auto",
+            "showThresholdLabels": false,
+            "showThresholdMarkers": true,
+            "sizing": "auto"
+          },
+          "targets": [
+            {
+              "expr": "sum(django_http_requests_total_by_view_transport_method_total)",
+              "legendFormat": "Total Requests",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Responses by Status Code",
+          "type": "piechart",
+          "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "table", "placement": "right", "values": ["value"] },
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "pieType": "donut"
+          },
+          "targets": [
+            {
+              "expr": "sum by (status) (django_http_responses_total_by_status_total)",
+              "legendFormat": "{{status}}",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Request Latency (p95)",
+          "type": "stat",
+          "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "#10B981", "value": null },
+                  { "color": "#F59E0B", "value": 0.5 },
+                  { "color": "#EF4444", "value": 2 }
+                ]
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p95 Latency",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Error Rate (4xx + 5xx)",
+          "type": "stat",
+          "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "#10B981", "value": null },
+                  { "color": "#F59E0B", "value": 0.05 },
+                  { "color": "#EF4444", "value": 0.2 }
+                ]
+              },
+              "unit": "percentunit"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(django_http_responses_total_by_status_total{status=~\"4..|5..\"}[5m])) / sum(rate(django_http_responses_total_by_status_total[5m]))",
+              "legendFormat": "Error Rate",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Traffic per Second",
+          "type": "timeseries",
+          "gridPos": { "h": 10, "w": 12, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "fixedColor": "#ACAD94", "mode": "fixed" },
+              "custom": {
+                "axisBorderShow": false,
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "gradientMode": "scheme",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 4,
+                "showPoints": "auto",
+                "spanNulls": false
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom", "calcs": [] },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(django_http_requests_total_by_view_transport_method_total[1m]))",
+              "legendFormat": "All Traffic",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(django_http_responses_total_by_status_total{status=~\"4..|5..\"}[1m]))",
+              "legendFormat": "Errors",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Requests by View",
+          "type": "barchart",
+          "gridPos": { "h": 10, "w": 12, "x": 12, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "fixedColor": "#384D48", "mode": "fixed" },
+              "custom": {
+                "axisBorderShow": false,
+                "fillOpacity": 80,
+                "gradientMode": "none",
+                "lineWidth": 0
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": {
+            "barWidth": 0.7,
+            "groupWidth": 0.75,
+            "legend": { "displayMode": "hidden" },
+            "orientation": "horizontal",
+            "tooltip": { "mode": "single", "sort": "none" },
+            "xTickLabelRotation": 0
+          },
+          "transformations": [
+            { "id": "sortBy", "options": { "fields": {}, "sort": [{ "field": "Value", "desc": true }] } },
+            { "id": "limit", "options": { "limitField": 10 } }
+          ],
+          "targets": [
+            {
+              "expr": "sum by (view) (django_http_requests_total_by_view_transport_method_total{view!~\"prometheus-django-metrics|health-check\"})",
+              "legendFormat": "{{view}}",
+              "refId": "A",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Latency Distribution",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "scheme",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "showPoints": "never"
+              },
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": { "displayMode": "list", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p95",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(django_http_requests_latency_including_middlewares_seconds_bucket[5m])) by (le))",
+              "legendFormat": "p99",
+              "refId": "C"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Live Backend Logs",
+          "type": "logs",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+          "datasource": { "type": "loki", "uid": "${DS_LOKI}" },
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "sortOrder": "Descending",
+            "dedupStrategy": "none"
+          },
+          "targets": [
+            {
+              "expr": "{app=\"backend\"}",
+              "refId": "A"
+            }
+          ]
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 39,
+      "tags": ["secureai", "soc", "devsecops"],
+      "templating": {
+        "list": [
+          {
+            "current": { "selected": false, "text": "Prometheus", "value": "Prometheus" },
+            "hide": 2,
+            "name": "DS_PROMETHEUS",
+            "type": "datasource",
+            "query": "prometheus"
+          },
+          {
+            "current": { "selected": false, "text": "Loki", "value": "Loki" },
+            "hide": 2,
+            "name": "DS_LOKI",
+            "type": "datasource",
+            "query": "loki"
+          }
+        ]
+      },
+      "time": { "from": "now-30m", "to": "now" },
+      "timepicker": {},
+      "timezone": "",
+      "title": "SecureAI MicroShield \u2014 Active Monitoring",
+      "uid": "secureai-soc",
+      "version": 1
+    }
