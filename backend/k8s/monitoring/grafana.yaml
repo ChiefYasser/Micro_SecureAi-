@@ -60,8 +60,6 @@ spec:
           value: "http://secureai.local/dashboard"
         - name: GF_SERVER_SERVE_FROM_SUB_PATH
           value: "true"
-        - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
-          value: "/var/lib/grafana/dashboards/default.json"
         - name: GF_INSTALL_PLUGINS
           value: "grafana-clock-panel"
         volumeMounts:
