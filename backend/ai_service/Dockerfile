@@ -4,7 +4,8 @@ FROM python:3.11-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Upgrade pip and bundled packages to patch known CVEs
+# Apply all security patches and upgrade pip
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 WORKDIR /app
