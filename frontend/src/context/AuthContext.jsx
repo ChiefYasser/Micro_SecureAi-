@@ -13,23 +13,33 @@ export function AuthProvider({ children }) {
     if (didInit.current) return;
     didInit.current = true;
 
+    // Timeout: if Keycloak hangs for >4s, proceed unauthenticated
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn("[Auth] Keycloak init timed out — proceeding without SSO");
+        setAuthenticated(false);
+        setLoading(false);
+      }
+    }, 4000);
+
+    // Expose for axios interceptor (avoids circular import)
+    window.__keycloak = keycloak;
+
     keycloak
       .init({ onLoad: "check-sso", silentCheckSsoRedirectUri: undefined })
       .then((auth) => {
+        clearTimeout(timeout);
         setAuthenticated(auth);
 
         if (auth) {
-          keycloak.loadUserProfile().then((p) => setProfile(p));
-
-          // Token refresh every 55 seconds
-          setInterval(() => {
-            keycloak.updateToken(60).catch(() => keycloak.login());
-          }, 55_000);
+          keycloak.loadUserProfile().then((p) => setProfile(p)).catch(() => {});
         }
 
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        clearTimeout(timeout);
+        console.warn("[Auth] Keycloak init failed:", err);
         setAuthenticated(false);
         setLoading(false);
       });
