@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-grey: #E2E2E2;
+  --color-secondary-grey: #D8D4D5;
+  --color-dark-navy: #1A202C;
+  --color-forest-dark: #384D48;
+  --color-slate-grey: #6E7271;
+  --color-sage-olive: #ACAD94;
+  --color-light-stone: #D8D4D5;
+  --color-paper-white: #E2E2E2;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Floating animation for hero image */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Page fade-in transition */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-out both;
+}
+
+/* Scanning progress bar for loading screen */
+@keyframes scanBar {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 70%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.animate-scan-bar {
+  animation: scanBar 1s ease-in-out both;
+}
